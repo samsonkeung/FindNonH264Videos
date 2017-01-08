@@ -1,16 +1,20 @@
 const fs = require("file-system"),
     exec = require('child_process').exec;
 
-extractFileList();
+main();
 
-function extractFileList(){
+function main(){
     var targetDir = process.argv[2];
 
-    if (!targetDir) {
+    if (!targetDir || process.argv.length > 3) {
         console.error("Usage: nodejs extractNonH264 <path>");
         process.exit();
     }
 
+    extractFileList(targetDir)
+}
+
+function extractFileList(targetDir){
     function appendSlash(path){
         if (path.charAt(path.length - 1) != "/"){
             return path + "/";
@@ -29,14 +33,48 @@ function extractFileList(){
 }
 
 function parseOutput(output, filePath){
-    var lines = output.split("\n");
+    var lines = output.split("\n"),
+        codec = "",
+        vbitrate = 0,
+        abitrate = 0,
+        tbitrate = 0;
 
     for (var i = 0; i < lines.length; i++){
-        if (lines[i].indexOf("Stream #0:0: Video:") >= 0 || lines[i].indexOf("Stream #0:1: Video:") >= 0){
-            if (lines[i].indexOf("h264") < 0){
-                process.stdout.write(filePath + " \n");
+        var splitted = lines[i].split(" "),
+            pos = -1;
+
+        if (splitted.indexOf("Duration:") >= 0) {
+            pos = splitted.indexOf("bitrate:");
+
+            if (pos >= 0){
+                tbitrate = parseInt(splitted[pos + 1]);
             }
         }
+
+        if (splitted.indexOf("Stream")){
+            pos = splitted.indexOf("Video:");
+            if (pos >= 0){
+                codec = splitted[pos + 1];
+
+                pos = splitted.indexOf("kb/s");
+                if(pos >= 0){
+                    vbitrate = parseInt(splitted[pos - 1]);
+                }
+            }
+
+            pos = splitted.indexOf("Audio");
+            if (pos >= 0){
+                pos = splitted.indexOf("kb/s");
+                if(pos >= 0){
+                    abitrate = parseInt(splitted[pos - 1]);
+                }
+            }
+        }
+    }
+
+    if (codec != "h264"){
+        var vbitrate_s = vbitrate? vbitrate.toString() : (tbitrate - abitrate).toString();
+        process.stdout.write(filePath + " Video Bitrate: " + vbitrate_s + "\n");
     }
 }
 
