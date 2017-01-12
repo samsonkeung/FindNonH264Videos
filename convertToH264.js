@@ -1,5 +1,5 @@
 const fs = require("file-system"),
-    exec = require('child_process').exec;
+    spawn = require('child_process').spawn;
 
 main();
 
@@ -22,12 +22,15 @@ function main(){
 }
 
 function autoConvert(lines) {
-    //console.log(lines[0]);
+    if (lines.length <= 0){
+      process.exit();
+    }
+
     function getDesiredBitrate(line) {
         var splitted = line.split(" "),
             pos = splitted.indexOf("Bitrate:");
 
-        return (parseInt(splitted[pos + 1]) - 100).toString();
+        return splitted[pos + 1];
     }
 
     function getPath(line) {
@@ -37,6 +40,39 @@ function autoConvert(lines) {
         return path;
     }
 
-    console.log(getPath(lines[0]));
-    console.log(getDesiredBitrate(lines[0]));
+    function getOutputPath(path) {
+        var pos = path.lastIndexOf("."),
+            extension = path.substring(pos),
+            pathNoExtension = path.substring(0, pos),
+            outPath = "";
+
+        if (extension === "mp4"){
+            outPath = pathNoExtension + "_converted.mp4";
+        } else {
+            outPath = pathNoExtension + ".mp4";
+        }
+
+        return outPath;
+    }
+
+    const inPath = getPath(lines[0]),
+        bitrate = getDesiredBitrate(lines[0]),
+        outPath = getOutputPath(inPath),
+        child = spawn("ffmpeg", ["-i", inPath, "-c:v", "h264_omx", "-c:a", "aac", "-b:v", bitrate + "k", outPath]);
+
+    child.stdout.on("data", function (data) {
+        process.stdout.write(data);
+    });
+
+    child.stderr.on("data", function (data) {
+        process.stderr.write(data);
+    });
+
+    child.on("close", function (code) {
+        process.stdout.write("\n ============================ \n");
+        lines.shift();
+        autoConvert(lines);
+    })
+
+
 }

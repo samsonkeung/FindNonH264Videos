@@ -62,7 +62,7 @@ function parseOutput(output, filePath){
                 }
             }
 
-            pos = splitted.indexOf("Audio");
+            pos = splitted.indexOf("Audio:");
             if (pos >= 0){
                 pos = splitted.indexOf("kb/s");
                 if(pos >= 0){
@@ -99,7 +99,7 @@ function inspectFiles(targetDir, files){
         var fileName = files[i],
             path = targetDir + fileName;
 
-        if (fs.statSync(path).isFile()){
+        if (fileName.charAt(0) != "." && fs.statSync(path).isFile()){
             // console.log(path);
             total++;
             inspect(path);
